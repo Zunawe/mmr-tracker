@@ -1,16 +1,14 @@
 import React, { FC, ReactNode } from 'react'
-
-// Import context providers
+import { DataContextProvider } from './data'
 
 interface ContextProviderProps {
   children: ReactNode
 }
 
 export const ContextProvider: FC<ContextProviderProps> = ({ children }) => {
-  // Render context providers nested
   return (
-    <>
+    <DataContextProvider>
       {children}
-    </>
+    </DataContextProvider>
   )
 }
