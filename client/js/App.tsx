@@ -1,17 +1,18 @@
 import React, { FC, useCallback, useContext } from 'react'
-import { setItems, setLocations } from './actions/data'
 
+import { recalculateAvailability, setItems, setLocations } from './actions/data'
+import { Item, ItemLocation } from './reducers/data'
 import { FileSelector } from './components'
 import { DataContext } from './context/data'
 
-const getLocationName = (id: number, doc: Document): string => {
+const getLocationName = (id: number, doc: Document): string | null => {
   const name = doc.querySelector(`.item-replacements tr[data-newlocationid="${id}"] .newlocation`)?.innerHTML
-  return name ?? 'NOT_FOUND'
+  return name ?? null
 }
 
-const getItemName = (id: number, doc: Document): string => {
+const getItemName = (id: number, doc: Document): string | null => {
   const name = doc.querySelector(`#item-locations tr[data-id="${id}"] td`)?.innerHTML
-  return name ?? 'NOT_FOUND'
+  return name ?? null
 }
 
 const getLocationOfItem = (id: number, doc: Document): number => {
@@ -43,10 +44,15 @@ export const App: FC = () => {
       if (logicString === undefined) {
         throw new Error('Failed to parse logic')
       }
-
       const logic: any[] = JSON.parse(logicString)
 
-      const items = logic.map((data, i) => {
+      const startingLocationsString = trackerHtml.match(/var startingLocations = (.*);/)?.[1]
+      if (startingLocationsString === undefined) {
+        throw new Error('Failed to parse starting locations')
+      }
+      const startingLocations: number[] = JSON.parse(startingLocationsString)
+
+      const items = logic.reduce((map, data, i) => {
         const item: Item = {
           id: i,
           name: getItemName(i, trackerDom),
@@ -55,23 +61,38 @@ export const App: FC = () => {
           isFake: data.IsFakeItem
         }
 
-        return item
-      })
+        map.set(i, item)
 
-      const locations = logic.map((data, i) => {
+        return map
+      }, new Map<Number, Item>())
+
+      const locations = logic.reduce((map, data, i) => {
         const location: ItemLocation = {
           id: i,
           name: getLocationName(i, trackerDom),
           whatAmI: getLocationOfItem(i, trackerDom),
           conditionalRequiredItems: data.ConditionalItemIds,
-          requiredItems: data.RequiredItemIds
+          requiredItems: data.RequiredItemIds,
+          isAvailable: false,
+          checked: false
         }
 
-        return location
+        map.set(i, location)
+
+        return map
+      }, new Map<Number, ItemLocation>())
+
+      startingLocations.forEach((locationId) => {
+        const location = locations.get(locationId)
+        location.checked = true
+        if (items.get(location.whatAmI) !== undefined) {
+          items.get(location.whatAmI).acquired = true
+        }
       })
 
       dataDispatch(setItems(items))
       dataDispatch(setLocations(locations))
+      dataDispatch(recalculateAvailability())
     }
 
     reader.readAsText(file)

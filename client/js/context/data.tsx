@@ -1,10 +1,10 @@
 import React, { FC, createContext, useReducer, useCallback } from 'react'
 
-import reducer from '../reducers/data'
+import { reducer, DataState, Item, ItemLocation } from '../reducers/data'
 
-const initialState = {
-  items: [],
-  locations: []
+const initialState: DataState = {
+  items: new Map<number, Item>(),
+  locations: new Map<number, ItemLocation>()
 }
 
 export const DataContext = createContext<[DataState, Dispatch]>([initialState, () => {}])
