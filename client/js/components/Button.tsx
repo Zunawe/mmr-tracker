@@ -1,6 +1,7 @@
-import React, { FC, useCallback } from 'react'
+import React, { FC, ReactNode, useCallback } from 'react'
 
 interface ButtonProps {
+  children: ReactNode
   onClick?: () => void
 }
 

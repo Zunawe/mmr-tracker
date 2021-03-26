@@ -1,5 +1,6 @@
 import React, { FC, ReactNode } from 'react'
-import { DataContextProvider } from './data'
+
+import { AppContextProvider } from './app'
 
 interface ContextProviderProps {
   children: ReactNode
@@ -7,8 +8,8 @@ interface ContextProviderProps {
 
 export const ContextProvider: FC<ContextProviderProps> = ({ children }) => {
   return (
-    <DataContextProvider>
+    <AppContextProvider>
       {children}
-    </DataContextProvider>
+    </AppContextProvider>
   )
 }

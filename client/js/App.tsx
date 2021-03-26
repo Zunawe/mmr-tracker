@@ -1,27 +1,26 @@
-import React, { FC, useCallback, useContext } from 'react'
+import React, { FC, useContext, useCallback } from 'react'
 
-import { recalculateAvailability, setItems, setLocations } from './actions/data'
-import { Item, ItemLocation } from './reducers/data'
-import { FileSelector } from './components'
-import { DataContext } from './context/data'
+import { setItems, setLocations, recalculateAvailability } from './context/actions/app'
+import { LocationCard, FileSelector } from './components'
+import { AppContext } from './context/app'
+
+const getItemNameAtLocation = (id: number, doc: Document): string | null => {
+  const name = doc.querySelector(`.item-replacements tr[data-newlocationid="${id}"] .itemname span`)?.getAttribute('data-content')
+  return name ?? null
+}
+
+const getItemAtLocation = (id: number, doc: Document): number => {
+  const itemId = doc.querySelector(`.item-replacements tr[data-newlocationid="${id}"]`)?.getAttribute('data-id')
+  return itemId === null || itemId === undefined ? -1 : Number.parseInt(itemId)
+}
 
 const getLocationName = (id: number, doc: Document): string | null => {
-  const name = doc.querySelector(`.item-replacements tr[data-newlocationid="${id}"] .newlocation`)?.innerHTML
+  const name = doc.querySelector(`.item-replacements tr[data-newlocationid="${id}"] .newLocation`)?.innerHTML
   return name ?? null
-}
-
-const getItemName = (id: number, doc: Document): string | null => {
-  const name = doc.querySelector(`#item-locations tr[data-id="${id}"] td`)?.innerHTML
-  return name ?? null
-}
-
-const getLocationOfItem = (id: number, doc: Document): number => {
-  const locationId = doc.querySelector(`#item-locations tr[data-id="${id}"]`)?.getAttribute('data-newlocationid')
-  return locationId === null || locationId === undefined ? -1 : Number.parseInt(locationId)
 }
 
 export const App: FC = () => {
-  const [/* data */, dataDispatch] = useContext(DataContext)
+  const [state, dispatch] = useContext(AppContext)
 
   const handleFileSelection = useCallback((file: File | undefined): void => {
     if (file === undefined) return
@@ -52,53 +51,64 @@ export const App: FC = () => {
       }
       const startingLocations: number[] = JSON.parse(startingLocationsString)
 
-      const items = logic.reduce((map, data, i) => {
-        const item: Item = {
-          id: i,
-          name: getItemName(i, trackerDom),
-          whereAmI: getLocationOfItem(i, trackerDom),
-          acquired: data.Acquired,
-          isFake: data.IsFakeItem
-        }
-
-        map.set(i, item)
-
-        return map
-      }, new Map<Number, Item>())
-
-      const locations = logic.reduce((map, data, i) => {
-        const location: ItemLocation = {
+      const locations: ItemLocation[] = logic.reduce((acc, data, i) => {
+        acc[i] = {
           id: i,
           name: getLocationName(i, trackerDom),
-          whatAmI: getLocationOfItem(i, trackerDom),
+          whatAmI: getItemAtLocation(i, trackerDom),
           conditionalRequiredItems: data.ConditionalItemIds,
           requiredItems: data.RequiredItemIds,
           isAvailable: false,
           checked: false
         }
 
-        map.set(i, location)
+        return acc
+      }, [])
 
-        return map
-      }, new Map<Number, ItemLocation>())
+      let items: Item[] = logic.reduce((acc, data, i) => {
+        acc[i] = {
+          id: i,
+          name: '',
+          whereAmI: -1,
+          acquired: data.Acquired,
+          isFake: data.IsFakeItem
+        }
+
+        return acc
+      }, [])
+
+      items = locations.reduce<Item[]>((items, location, i) => {
+        items[location.whatAmI] = {
+          ...items[location.whatAmI],
+          name: getItemNameAtLocation(location.id, trackerDom),
+          whereAmI: location.id
+        }
+
+        return items
+      }, items)
 
       startingLocations.forEach((locationId) => {
-        const location = locations.get(locationId)
+        const location = locations[locationId]
         location.checked = true
-        if (items.get(location.whatAmI) !== undefined) {
-          items.get(location.whatAmI).acquired = true
+        if (items[location.whatAmI] !== undefined) {
+          items[location.whatAmI].acquired = true
         }
       })
 
-      dataDispatch(setItems(items))
-      dataDispatch(setLocations(locations))
-      dataDispatch(recalculateAvailability())
+      dispatch(setItems(items))
+      dispatch(setLocations(locations))
+      dispatch(recalculateAvailability())
     }
 
     reader.readAsText(file)
   }, [])
 
+  const uncheckedLocations = state.locations.filter(({ isAvailable, checked }) => isAvailable && !checked).map(({ id }) => id)
+
   return (
-    <FileSelector onChange={handleFileSelection} />
+    <>
+      <FileSelector onChange={handleFileSelection} />
+      {uncheckedLocations.map((id) => <LocationCard key={id} locationId={id} />)}
+    </>
   )
 }
