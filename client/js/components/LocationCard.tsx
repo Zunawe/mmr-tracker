@@ -10,8 +10,9 @@ export const LocationCard: FC<LocationCardProps> = ({ locationId }) => {
   const [state, dispatch] = useContext(AppContext)
 
   const locationData = state.locations[locationId]
+  const itemData = state.items[locationData.whatAmI]
 
-  const handleClick = useCallback((event: React.MouseEvent<HTMLButtonElement, MouseEvent>) => {
+  const handleChange = useCallback(() => {
     dispatch(checkLocation(locationId))
   }, [])
 
@@ -19,11 +20,20 @@ export const LocationCard: FC<LocationCardProps> = ({ locationId }) => {
     return null
   }
 
+  const classNames = ['locationCard']
+  if (locationData.checked) {
+    classNames.push('locationCard--checked')
+  } else if (locationData.isAvailable) {
+    classNames.push('locationCard--available')
+  } else {
+    classNames.push('locationCard--unavailable')
+  }
+
   return (
-    <div>
-      <button onClick={handleClick}>
-        {locationData.name}
-      </button>
+    <div className={classNames.join(' ')}>
+      <input type='checkbox' checked={locationData.checked} onChange={handleChange} />
+      <span>{locationData.name}</span>
+      <span>{locationData.checked ? itemData.name : ''}</span>
     </div>
   )
 }

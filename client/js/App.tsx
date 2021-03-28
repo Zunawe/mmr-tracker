@@ -103,12 +103,15 @@ export const App: FC = () => {
     reader.readAsText(file)
   }, [])
 
-  const uncheckedLocations = state.locations.filter(({ isAvailable, checked }) => isAvailable && !checked).map(({ id }) => id)
+  // const uncheckedLocations = state.locations.filter(({ isAvailable, checked }) => isAvailable && !checked).map(({ id }) => id)
 
   return (
     <>
       <FileSelector onChange={handleFileSelection} />
-      {uncheckedLocations.map((id) => <LocationCard key={id} locationId={id} />)}
+      <div className='cardColumn'>
+        {/* {uncheckedLocations.map((id) => <LocationCard key={id} locationId={id} />)} */}
+        {state.locations.map(({ id }) => <LocationCard key={id} locationId={id} />)}
+      </div>
     </>
   )
 }
